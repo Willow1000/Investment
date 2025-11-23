@@ -13,7 +13,7 @@ interface CryptoItem {
 interface CryptoCarouselProps {
   items?: CryptoItem[];
   title?: string;
-  scrollSpeed?: number;
+  scrollSpeed?: number; // Lower numbers = slower, higher numbers = faster
 }
 
 const defaultCryptoItems: CryptoItem[] = [
@@ -36,14 +36,13 @@ const defaultCryptoItems: CryptoItem[] = [
 export const CryptoCarousel: React.FC<CryptoCarouselProps> = ({
   items = defaultCryptoItems,
   title = 'Explore Cryptocurrencies',
-  scrollSpeed = 5, // Adjusted to 5 for a moderate speed
+  scrollSpeed = 2, // Changed from 5 to 2 for much slower speed
 }) => {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const animationRef = useRef<number>();
   const scrollPositionRef = useRef(0);
   const itemWidthRef = useRef(0);
   const isUserInteractingRef = useRef(false);
-  // Use a ref to track hover state across all elements
   const isHoveringRef = useRef(false); 
 
   // Duplicate items for seamless infinite scroll
@@ -53,7 +52,6 @@ export const CryptoCarousel: React.FC<CryptoCarouselProps> = ({
   useEffect(() => {
     if (scrollContainerRef.current) {
       const container = scrollContainerRef.current;
-      // Find the first item inside the container
       const firstItem = container.querySelector('.carousel-item') as HTMLElement;
       if (firstItem) {
         const itemWidth = firstItem.offsetWidth;
@@ -95,13 +93,11 @@ export const CryptoCarousel: React.FC<CryptoCarouselProps> = ({
 
   const handleUserInteractionEnd = useCallback(() => {
     isUserInteractingRef.current = false;
-    // Only restart if not hovering
     if (!isHoveringRef.current) {
         startAutoScroll();
     }
   }, []);
 
-  // Modified hover handlers to use the ref and ensure animation is cancelled/restarted correctly
   const handleCarouselHover = useCallback(() => {
     isHoveringRef.current = true;
     if (animationRef.current) {
@@ -111,14 +107,12 @@ export const CryptoCarousel: React.FC<CryptoCarouselProps> = ({
 
   const handleCarouselLeave = useCallback(() => {
     isHoveringRef.current = false;
-    // Only restart if not interacting (e.g., dragging)
     if (!isUserInteractingRef.current) {
       startAutoScroll();
     }
   }, []);
 
   const startAutoScroll = useCallback(() => {
-    // Check if we should stop auto-scrolling
     if (isUserInteractingRef.current || isHoveringRef.current || !scrollContainerRef.current) {
       if (animationRef.current) {
         cancelAnimationFrame(animationRef.current);
@@ -127,13 +121,14 @@ export const CryptoCarousel: React.FC<CryptoCarouselProps> = ({
     }
 
     let lastTime: number | null = null;
+    // Add a speed multiplier to make the animation even smoother and slower
+    const speedMultiplier = 0.5; // Additional slowing factor
 
     const animate = (currentTime: number) => {
       if (!lastTime) lastTime = currentTime;
       const deltaTime = currentTime - lastTime;
       lastTime = currentTime;
 
-      // Re-check stop conditions inside the animation loop
       if (isUserInteractingRef.current || isHoveringRef.current || !scrollContainerRef.current) {
         if (animationRef.current) {
           cancelAnimationFrame(animationRef.current);
@@ -141,15 +136,14 @@ export const CryptoCarousel: React.FC<CryptoCarouselProps> = ({
         return;
       }
 
-      // The scroll amount is calculated based on scrollSpeed and time elapsed
-      // Dividing by 16 is a common way to normalize for a 60fps (1000ms/60fps ≈ 16.67ms) frame rate
-      const scrollAmount = (scrollSpeed * deltaTime) / 16;
+      // Further reduced scroll amount for slower movement
+      // Using scrollSpeed * speedMultiplier and dividing by a larger number (32 instead of 16)
+      const scrollAmount = (scrollSpeed * speedMultiplier * deltaTime) / 32;
       
       if (scrollContainerRef.current) {
         scrollPositionRef.current += scrollAmount;
         scrollContainerRef.current.scrollLeft = scrollPositionRef.current;
         
-        // Check and reset scroll position for infinite effect
         checkAndResetScroll();
       }
 
@@ -160,7 +154,6 @@ export const CryptoCarousel: React.FC<CryptoCarouselProps> = ({
   }, [scrollSpeed, checkAndResetScroll]);
 
   useEffect(() => {
-    // Initialize scroll position to middle section for infinite scroll
     if (scrollContainerRef.current) {
       const sectionWidth = getSectionWidth();
       scrollContainerRef.current.scrollLeft = sectionWidth;
@@ -176,9 +169,6 @@ export const CryptoCarousel: React.FC<CryptoCarouselProps> = ({
     };
   }, [startAutoScroll, getSectionWidth]);
 
-  // The original component had an extra useEffect for hovering, which is now redundant
-  // because the hover logic is managed by the ref and the startAutoScroll function's checks.
-
   const scroll = (direction: 'left' | 'right') => {
     if (scrollContainerRef.current) {
       handleUserInteractionStart();
@@ -193,11 +183,9 @@ export const CryptoCarousel: React.FC<CryptoCarouselProps> = ({
       
       scrollPositionRef.current = newPosition;
       
-      // Check for infinite scroll after animation and resume auto-scroll
       setTimeout(() => {
         checkAndResetScroll();
-        // Use a slightly longer timeout to ensure smooth scroll completes before resuming
-        setTimeout(() => handleUserInteractionEnd(), 500); 
+        setTimeout(() => handleUserInteractionEnd(), 500);
       }, 400);
     }
   };
@@ -251,7 +239,6 @@ export const CryptoCarousel: React.FC<CryptoCarouselProps> = ({
           <div
             ref={scrollContainerRef}
             onScroll={checkAndResetScroll}
-            // Apply hover handlers to the main container
             onMouseEnter={handleCarouselHover}
             onMouseLeave={handleCarouselLeave}
             onTouchStart={handleUserInteractionStart}
@@ -266,8 +253,6 @@ export const CryptoCarousel: React.FC<CryptoCarouselProps> = ({
               <div
                 key={index}
                 className="flex-shrink-0 group cursor-pointer transform transition-all duration-300 hover:scale-105 active:scale-95 carousel-item"
-                // Remove hover handlers from individual items to prevent flickering
-                // The main container handles the hover-to-pause for the entire carousel area
               >
                 <div
                   className={`w-44 h-52 rounded-3xl ${colorMap[item.color] || 'bg-gradient-to-br from-gray-500 to-gray-700'} p-6 flex flex-col items-center justify-center text-center shadow-xl hover:shadow-2xl transition-all duration-300 relative overflow-hidden border border-white/20`}
